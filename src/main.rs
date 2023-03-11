@@ -1,6 +1,27 @@
+#![allow(dead_code)] //TEMP while building
+use std::io::{self, Write};
+
 fn main() {
-    println!("Hello, world!");
+    //get user input TODO later change to UI
+    print!("> ");
+    std::io::stdout().flush().unwrap();
+    let user_in = get_user_in();
+    println!("{:?}", user_in);
+    //parse user input
+    //print result
+
 }
+
+fn get_user_in() -> String {
+    let mut buffer = String::new();
+    let stdin = io::stdin();
+    match stdin.read_line(&mut buffer) {
+        Ok(_text_in_buffer) => {},
+        Err(_empty_buffer) => {eprintln!("Error: {}", _empty_buffer)}
+    }
+    buffer.trim().to_string()
+}
+
 
 fn add(a:i64, b:i64) -> i64 {
     a + b
