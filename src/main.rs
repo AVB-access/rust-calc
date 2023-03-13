@@ -1,5 +1,52 @@
 #![allow(dead_code)] //TEMP while building
 use std::io::{self, Write};
+use std::fmt::{Display, Formatter, Error as FmtError};
+use std::error::Error;
+use std::num::ParseIntError;
+
+/* Custom errors */
+#[derive(Debug, Clone)]
+pub enum ExtractOperationError {
+    InvalidOperator,
+    InvalidInteger(ParseIntError),
+}
+
+impl From<ParseIntError> for ExtractOperationError {
+    fn from(e: ParseIntError) -> Self {
+        Self::InvalidInteger(e)
+    }
+}
+
+impl Error for ExtractOperationError {}
+
+impl Display for ExtractOperationError {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError> {
+        match self {
+            Self::InvalidOperator => write!(f, "Invalid operator found."),
+            Self::InvalidInteger(e) => write!(f, "Invalid integer: {}", e)
+        }
+    }
+}
+
+/**
+ * RUST Practise Calculator
+ * Written by: AVB
+ * 
+ * TODO: Figure out how to handle order of operations
+ *          Find a data struct to do it
+ *       For debug: parse comand line inputs
+ *       Do the math on the inputs
+ *          Write some tests for the above
+ * 
+ * Later (don't think about now):
+ *      Undo button
+ */
+
+#[derive(Debug, PartialEq)]
+enum Operation {
+    Op(char),
+    Number(i64)
+}
 
 fn main() {
     //get user input TODO later change to UI
@@ -12,6 +59,7 @@ fn main() {
 
 }
 
+//Read and pass user input TODO only temp until UI is built
 fn get_user_in() -> String {
     let mut buffer = String::new();
     let stdin = io::stdin();
@@ -22,6 +70,65 @@ fn get_user_in() -> String {
     buffer.trim().to_string()
 }
 
+/**
+ * Just reading a single operation for now
+ * TODO:
+ * Read and parse the ints of the user input
+ * user_in -> user input TODO: later change to how the UI handles it
+ * Returns:
+ *  Vector of ints
+ *  Error: ParseIntError
+ */
+fn parse_ints(user_in:&String) -> Result<[Operation;3], ExtractOperationError> {
+    let mut equation:[Operation;3] = [Operation::Number(0), Operation::Op('+'), Operation::Number(0)];
+
+    //Split on whitespace (don't allow unspaced things for now)
+    let split_line = user_in.split_whitespace().collect::<Vec<&str>>();
+
+    equation[0] = Operation::Number(split_line[0].parse::<i64>()?);
+    equation[2] = Operation::Number(split_line[2].parse::<i64>()?);
+    if is_valid_op(split_line[1]) {
+        equation[1] = Operation::Op(split_line[1].chars().nth(0).unwrap());
+    }else {
+        return Err(ExtractOperationError::InvalidOperator)
+    }
+    /* Save for later use, currently not used
+    for (i, int_or_op) in user_in.split_whitespace().enumerate() {
+        match int_or_op.parse::<i64>() {
+            Ok(value) => equation[i] = Operation::Number(value),
+            Err(e) => { //TODO figure out what to do here (handle operator validation)
+                if is_valid_op(int_or_op){
+                    equation[i] = Operation::Op(int_or_op.chars().nth(0).unwrap())
+                }else {
+                    Err(e)?
+                }
+            }
+        }
+    } */
+
+    //do the math, then return that result?
+    return Ok(equation);
+}
+
+/**
+ * Checks if given string is in a list of valid operators:
+ *  - Valid operators are +,-,/,*, // These later (, or )
+ * 
+ * returns true if matches above, else false
+ */
+fn is_valid_op(check_this: &str) -> bool {
+    if check_this.len() != 1 { return false }
+    let operators = ['+','-','/','*'];//,'(',')'];
+
+    if operators.iter().any(|&o| check_this.starts_with(o)) {
+        return true;
+    }
+    false
+}
+
+fn do_math(_values: Vec<i64>, _operations: Vec<char>) {
+    //TODO
+}
 
 fn add(a:i64, b:i64) -> i64 {
     a + b
@@ -45,7 +152,54 @@ fn div(a:i64, b:i64) -> Result<i64, &'static str> {
 //TESTS
 #[cfg(test)]
 mod tests {
-    use crate::{add, sub, multi, div};
+
+    use super::*;
+
+    #[test]
+    fn basic_addition_input() {
+        let expected: [Operation;3] = [Operation::Number(123), Operation::Op('+'), Operation::Number(456)];
+        let input = "123 + 456".to_string();
+        let actual = parse_ints(&input).unwrap();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn basic_sub_input() {
+        let expected: [Operation;3] = [Operation::Number(123), Operation::Op('-'), Operation::Number(456)];
+        let input = "123 - 456".to_string();
+        let actual = parse_ints(&input).unwrap();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn basic_multi_input() {
+        let expected: [Operation;3] = [Operation::Number(123), Operation::Op('*'), Operation::Number(456)];
+        let input = "123 * 456".to_string();
+        let actual = parse_ints(&input).unwrap();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn basic_div_input() {
+        let expected: [Operation;3] = [Operation::Number(123), Operation::Op('/'), Operation::Number(456)];
+        let input = "123 / 456".to_string();
+        let actual = parse_ints(&input).unwrap();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn invalid_inputs_return_err() {
+        let mut input = "x / 456".to_string();
+        assert!(parse_ints(&input).is_err());
+        input = "123 x 456".to_string();
+        assert!(parse_ints(&input).is_err());
+        input = "123 / x".to_string();
+        assert!(parse_ints(&input).is_err());
+    }
 
     #[test]
     fn basic_add(){
